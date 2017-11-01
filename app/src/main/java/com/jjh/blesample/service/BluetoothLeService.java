@@ -26,6 +26,7 @@ import com.jjh.blesample.vo.measurement.HeartRate;
 import com.jjh.blesample.vo.measurement.Temperature;
 import com.jjh.blesample.vo.measurement.Weight;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.List;
 
@@ -55,7 +56,6 @@ public class BluetoothLeService extends Service {
     private static final int STATE_CONNECTED = 2;
 
     private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
-        boolean isWriteRACPGetData = false;
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             Log.d("BluetoothGattCallback", "onConnectionStateChange--" + gatt.getDevice().getName() + "/" + gatt.getDevice().getName() + " -> " + (newState == STATE_CONNECTED? "STATE_CONNECTED" : newState == STATE_DISCONNECTED ? "STATE_DISCONNECTED" : ""));
@@ -108,9 +108,8 @@ public class BluetoothLeService extends Service {
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
             Log.i("BluetoothGattCallback", "--onDescriptorWrite = " + GattAttributes.getCharacteristicName(descriptor.getCharacteristic().getUuid()));
-            if(GattAttributes.Characteristic.GLUCOSE_RECORD_ACCESS_CONTROL_POINT.isMatchedWithUUID(descriptor.getCharacteristic().getUuid()) && !isWriteRACPGetData){
+            if(GattAttributes.Characteristic.GLUCOSE_RECORD_ACCESS_CONTROL_POINT.isMatchedWithUUID(descriptor.getCharacteristic().getUuid())){
                 writeRACP(descriptor.getCharacteristic(), RACPAttributes.OpCode.REPORT_NUMBER_OF_STORED_RECORDS, RACPAttributes.Operator.ALL_RECORDS);
-                isWriteRACPGetData = true;
             }
         }
     };
@@ -349,9 +348,11 @@ public class BluetoothLeService extends Service {
      * released properly.
      */
     public void close() {
+        Log.i("BluetoothLEService", "Close Bluetooth Gatt");
         if (mBluetoothGatt == null) {
             return;
         }
+        mBluetoothGatt.disconnect();
         mBluetoothGatt.close();
         mBluetoothGatt = null;
     }
@@ -429,12 +430,37 @@ public class BluetoothLeService extends Service {
     }
 
     private void writeRACP(BluetoothGattCharacteristic characteristic, RACPAttributes.OpCode opCode, RACPAttributes.Operator operator){
+
         byte[] data = new byte[2];
         data[0] = opCode.code;
         data[1] = operator.code;
         characteristic.setValue(data);
-        boolean isRACPWriteSuccess = mBluetoothGatt.writeCharacteristic(characteristic);
+
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            Field f = mBluetoothGatt.getClass().getDeclaredField("mDeviceBusy");
+            f.setAccessible(true);
+            boolean deviceBusy = (Boolean)f.get(mBluetoothGatt);
+            Log.e("device busy", "" + deviceBusy);
+            /*if(deviceBusy) {
+                f.set(mBluetoothGatt, false);
+            }*/
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+
+
+        boolean isRACPWriteSuccess =  mBluetoothGatt.writeCharacteristic(characteristic);
         Log.i("writeRACP", opCode.name() + "/" + operator.name() + "/isWriteSuccess=" + isRACPWriteSuccess);
+
+
         /*Iterator<BluetoothGattCharacteristic> iterator = mStandardGattService.getCharacteristics().iterator();
         while (iterator.hasNext()){
             BluetoothGattCharacteristic writeRACPchar = iterator.next();
