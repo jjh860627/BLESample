@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import com.jjh.blesample.vo.measurement.BP;
 import com.jjh.blesample.vo.measurement.Glucose;
 import com.jjh.blesample.vo.measurement.HeartRate;
+import com.jjh.blesample.vo.measurement.Spo2;
 import com.jjh.blesample.vo.measurement.Temperature;
 import com.jjh.blesample.vo.measurement.Weight;
 
@@ -281,6 +282,118 @@ public class GattDataParser {
 
         return weight;
     }
+
+    public Spo2 parseSpo2Data(BluetoothGattCharacteristic characteristic){
+        byte flag = characteristic.getValue()[0];
+
+        float spo2Value = characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, 1);
+        float pr = characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, 3);
+
+        int index = 5;
+
+        DateTime timestamp = null;
+        if((flag & 0x01) != 0){
+            timestamp = getDateTimeFromCharacteristic(characteristic, index);
+            index += 7;
+        }
+
+        int measurementStatus = -1;
+        if((flag & 0x02) != 0){
+            measurementStatus = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, index);
+            index += 2;
+        }
+
+        int deviceAndSensorStatus = -1;
+        if((flag & 0x04) != 0){
+            //8 + 16 = 24bit
+            deviceAndSensorStatus = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, index) + characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, index + 1) << 8;
+            index += 3;
+        }
+
+        float pulseAmplitudeIndex = -1;
+        if((flag & 0x08) != 0){
+            pulseAmplitudeIndex = characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, index);
+            index += 2;
+        }
+
+        boolean isDeviceClockSet = (flag & 0x10) == 1;
+
+        Spo2 spo2 = new Spo2();
+        spo2.setSpo2(spo2Value);
+        spo2.setPr(pr);
+        spo2.setTimestamp(timestamp);
+        spo2.setMeasurementStatus(measurementStatus);
+        spo2.setDeviceAndSensorStatus(deviceAndSensorStatus);
+        spo2.setPulseAmplitudeIndex(pulseAmplitudeIndex);
+        spo2.setDeviceClockSet(isDeviceClockSet);
+
+        return spo2;
+    }
+
+    public Spo2 parseSpo2ContinuousData(BluetoothGattCharacteristic characteristic){
+        byte flag = characteristic.getValue()[0];
+
+        float spo2Value = characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, 1);
+        float pr = characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, 3);
+
+        int index = 5;
+
+        float spo2Fast = -1;
+        float prFast = -1;
+        if((flag & 0x01) != 0){
+            spo2Fast = characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, index);
+            index += 2;
+            prFast = characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, index);
+            index += 2;
+        }
+
+        float spo2Slow = -1;
+        float prSlow = -1;
+        if((flag & 0x02) != 0){
+            spo2Slow = characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, index);
+            index += 2;
+            prSlow = characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, index);
+            index += 2;
+        }
+
+        int measurementStatus = -1;
+        if((flag & 0x04) != 0){
+            measurementStatus = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, index);
+            index += 2;
+        }
+
+        int deviceAndSensorStatus = -1;
+        if((flag & 0x08) != 0){
+            //8 + 16 = 24bit
+            deviceAndSensorStatus = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, index) + characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, index + 1) << 8;
+            index += 3;
+        }
+
+        float pulseAmplitudeIndex = -1;
+        if((flag & 0x10) != 0){
+            pulseAmplitudeIndex = characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, index);
+            index += 2;
+        }
+
+        Spo2 spo2 = new Spo2();
+        spo2.setSpo2(spo2Value);
+        spo2.setPr(pr);
+        spo2.setMeasurementStatus(measurementStatus);
+        spo2.setDeviceAndSensorStatus(deviceAndSensorStatus);
+        spo2.setPulseAmplitudeIndex(pulseAmplitudeIndex);
+
+        Spo2.MeasurementContinuous measurementContinuous = new Spo2.MeasurementContinuous();
+        measurementContinuous.setSpo2Fast(spo2Fast);
+        measurementContinuous.setPrFast(prFast);
+        measurementContinuous.setSpo2Slow(spo2Slow);
+        measurementContinuous.setPrSlow(prSlow);
+
+        spo2.setMeasurementContinuous(measurementContinuous);
+
+        return spo2;
+
+    }
+
 
     private DateTime getDateTimeFromCharacteristic(BluetoothGattCharacteristic characteristic, int startIndex){
         int year = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, startIndex);

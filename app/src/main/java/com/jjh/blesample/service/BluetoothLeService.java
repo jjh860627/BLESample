@@ -23,6 +23,7 @@ import com.jjh.blesample.util.GattDataParser;
 import com.jjh.blesample.vo.measurement.BP;
 import com.jjh.blesample.vo.measurement.Glucose;
 import com.jjh.blesample.vo.measurement.HeartRate;
+import com.jjh.blesample.vo.measurement.Spo2;
 import com.jjh.blesample.vo.measurement.Temperature;
 import com.jjh.blesample.vo.measurement.Weight;
 
@@ -108,7 +109,7 @@ public class BluetoothLeService extends Service {
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
             Log.i("BluetoothGattCallback", "--onDescriptorWrite = " + GattAttributes.getCharacteristicName(descriptor.getCharacteristic().getUuid()));
-            if(GattAttributes.Characteristic.GLUCOSE_RECORD_ACCESS_CONTROL_POINT.isMatchedWithUUID(descriptor.getCharacteristic().getUuid())){
+            if(GattAttributes.Characteristic.RECORD_ACCESS_CONTROL_POINT.isMatchedWithUUID(descriptor.getCharacteristic().getUuid())){
                 writeRACP(descriptor.getCharacteristic(), RACPAttributes.OpCode.REPORT_NUMBER_OF_STORED_RECORDS, RACPAttributes.Operator.ALL_RECORDS);
             }
         }
@@ -191,8 +192,8 @@ public class BluetoothLeService extends Service {
             }
             intent.putExtra(EXTRA_DATA, sb.toString());
 
-        } else if (GattAttributes.Characteristic.GLUCOSE_RECORD_ACCESS_CONTROL_POINT.isMatchedWithUUID(characteristic.getUuid())){
-            //Glucose - RACP
+        } else if (GattAttributes.Characteristic.RECORD_ACCESS_CONTROL_POINT.isMatchedWithUUID(characteristic.getUuid())){
+            //Glucose, SPo2 - RACP
             readRACP(characteristic);
             return;
 
@@ -224,7 +225,7 @@ public class BluetoothLeService extends Service {
             //Weight - Weight Measurement
             Weight weight = mGattDataParser.parseWeightScaleData(characteristic);
             intent.putExtra(EXTRA_DATA, weight);
-        }  else if (GattAttributes.Characteristic.WEIGHT_SCALE_FEATURE.isMatchedWithUUID(characteristic.getUuid())){
+        } else if (GattAttributes.Characteristic.WEIGHT_SCALE_FEATURE.isMatchedWithUUID(characteristic.getUuid())){
             //Weight - Weight Scale Feature
             StringBuilder sb = new StringBuilder();
             int weightFeature = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT32, 0);
@@ -234,8 +235,50 @@ public class BluetoothLeService extends Service {
               .append(Weight.WeightScaleFeature.BMI_SUPPORTED.name()).append(" : ").append(Weight.WeightScaleFeature.BMI_SUPPORTED.getFlagValue(weightFeature & 0x04)).append("\n")
               .append(Weight.WeightScaleFeature.WEIGHT_MEASUREMENT_RESOLUTION.name()).append(" : ").append(Weight.WeightScaleFeature.WEIGHT_MEASUREMENT_RESOLUTION.getFlagValue((weightFeature >> 3) & 0x0F)).append("\n")
               .append(Weight.WeightScaleFeature.HEIGHT_MEASUREMENT_RESOLUTION.name()).append(" : ").append(Weight.WeightScaleFeature.HEIGHT_MEASUREMENT_RESOLUTION.getFlagValue((weightFeature >> 7) & 0x07)).append("\n");
-
             intent.putExtra(EXTRA_DATA, sb.toString());
+
+        } else if (GattAttributes.Characteristic.PLX_SPOT_CHECK_MEASUREMENT.isMatchedWithUUID(characteristic.getUuid())){
+            //Pulse Oximeter - PLX Spot-Check Measurement
+            Spo2 spo2 = mGattDataParser.parseSpo2Data(characteristic);
+            intent.putExtra(EXTRA_DATA, spo2);
+
+        } else if (GattAttributes.Characteristic.PLX_CONTINUOUS_MEASUREMENT.isMatchedWithUUID(characteristic.getUuid())){
+            //Pulse Oximeter - PLX Continuous Measurement
+            Spo2 spo2 = mGattDataParser.parseSpo2ContinuousData(characteristic);
+            intent.putExtra(EXTRA_DATA, spo2);
+
+        } else if (GattAttributes.Characteristic.PLX_FEATURES.isMatchedWithUUID(characteristic.getUuid())){
+            //Pulse Oximeter - PLX Feature
+            StringBuilder sb = new StringBuilder();
+            int plxFeature = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 0);
+
+            int bitFlag = 0x01;
+            for(Spo2.SupportedFeature sf : Spo2.SupportedFeature.values()){ //Supported Features
+                sb.append(sf.name()).append(" : ").append((plxFeature & bitFlag) == 1).append("\n");
+                bitFlag *= 2;
+            }
+
+            int index = 2;
+            if((plxFeature & 0x01) == 1){ //Measurement Status Support
+                int measurementStatusSupport = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, index);
+                index += 2;
+                bitFlag = 0x10;
+                for(Spo2.MeasurementStatus ms : Spo2.MeasurementStatus.values()){
+                    sb.append(ms.name()).append("SUPPORTED : ").append((measurementStatusSupport & bitFlag) == 1).append("\n");
+                    bitFlag *= 2;
+                }
+            }
+
+            if((plxFeature & 0x02) == 1){ //Device and Sensor Status Support
+                int deviceAndSensorStatus = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, index) + characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, index + 1) << 8;
+                bitFlag = 0x01;
+                for(Spo2.DeviceAndSensorStatus dass : Spo2.DeviceAndSensorStatus.values()){
+                    sb.append(dass.name()).append("SUPPORTED : ").append((deviceAndSensorStatus & bitFlag) == 1).append("\n");
+                    bitFlag *= 2;
+                }
+            }
+            intent.putExtra(EXTRA_DATA, sb.toString());
+
         } else {
            if (value != null && value.length > 0) {
                final StringBuilder stringBuilder = new StringBuilder(value.length);
@@ -380,6 +423,7 @@ public class BluetoothLeService extends Service {
      */
     public void setCharacteristicNotification(BluetoothGattCharacteristic characteristic,
                                               boolean enabled) {
+        Log.i("BluetoothLeService", "setCharacteristicNotification=" + GattAttributes.getCharacteristicName(characteristic.getUuid()));
        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
             Log.i(TAG, "BluetoothAdapter not initialized");
             return;
@@ -401,6 +445,7 @@ public class BluetoothLeService extends Service {
 
     public void setCharacteristicIndication(BluetoothGattCharacteristic characteristic,
                                             boolean enabled) {
+        Log.i("BluetoothLeService", "setCharacteristicIndication=" + GattAttributes.getCharacteristicName(characteristic.getUuid()));
         if (mBluetoothAdapter == null || mBluetoothGatt == null) {
             Log.i(TAG, "BluetoothAdapter not initialized");
             return;

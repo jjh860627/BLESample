@@ -26,6 +26,7 @@ import com.jjh.blesample.vo.BleService;
 import com.jjh.blesample.vo.measurement.BP;
 import com.jjh.blesample.vo.measurement.Glucose;
 import com.jjh.blesample.vo.measurement.HeartRate;
+import com.jjh.blesample.vo.measurement.Spo2;
 import com.jjh.blesample.vo.measurement.Temperature;
 import com.jjh.blesample.vo.measurement.Weight;
 
@@ -236,31 +237,47 @@ public class BLEServiceActivity extends AppCompatActivity {
             sbText.append("SYS : ").append(bp.getSys()).append(" ").append(bp.getUnitStr()).append("\n")
                   .append("DIA : ").append(bp.getDia()).append(" ").append(bp.getUnitStr()).append("\n")
                   .append("MAP : ").append(bp.getMap()).append(" ").append(bp.getUnitStr()).append("\n")
-                  .append("Pulse Rate : ").append(bp.getPulseRate()).append(" ").append(bp.getUnitStr()).append("\n");
-        }else if(data instanceof HeartRate){
+                  .append("Pulse Rate : ").append(bp.getPulseRate()).append(" ").append(bp.getUnitStr()).append("\n")
+                  .append("Timestamp : ").append(bp.getTimestamp()).append("\n");
+        } else if(data instanceof HeartRate){
             HeartRate heartRate = (HeartRate)data;
             sbText.append("Heart Rate : ").append(heartRate.getHeartRate()).append("\n")
                   .append("Energy Expended : ").append(heartRate.getEnergyExpended()).append("\n");
-        }else if(data instanceof Temperature){
+        } else if(data instanceof Temperature){
             Temperature temperature = (Temperature)data;
             sbText.append("Temperature : ").append(temperature.getTemperature()).append("\n")
-                  .append("Unit : ").append(temperature.getUnit()).append("(").append(temperature.getUnitStr()).append(")").append("\n");
-        }else if(data instanceof Glucose){
+                  .append("Unit : ").append(temperature.getUnit()).append("(").append(temperature.getUnitStr()).append(")").append("\n")
+                  .append("Timestamp : ").append(temperature.getTimestamp()).append("\n");
+        } else if(data instanceof Glucose){
             Glucose glucose = (Glucose)data;
-            sbText.append("Glucose : ").append(glucose.getGlucose()).append(" ").append(glucose.getUnitStr()).append("\n");
-        }else if(data instanceof Weight){
+            sbText.append("Glucose : ").append(glucose.getGlucose()).append(" ").append(glucose.getUnitStr()).append("\n")
+                  .append("Base Time : ").append(glucose.getBaseTime()).append("\n")
+                  .append("Time Offset : ").append(glucose.getTimeOffset()).append("\n");
+        } else if(data instanceof Weight){
             Weight weight = (Weight)data;
-            sbText.append("Weihgt : ").append(weight.getWeight()).append(" ").append(weight.getUnitStr()).append("\n")
+            sbText.append("Weight : ").append(weight.getWeight()).append(" ").append(weight.getUnitStr()).append("\n")
                   .append("BMI : ").append(weight.getBmi()).append("\n")
-                  .append("Height : ").append(weight.getHeight()).append("\n");
-
-        }else{
+                  .append("Height : ").append(weight.getHeight()).append("\n")
+                  .append("Timestamp : ").append(weight.getTimestamp()).append("\n");
+        } else if(data instanceof Spo2){
+            Spo2 spo2 = (Spo2)data;
+            sbText.append("Spo2 : ").append(spo2.getSpo2()).append(" %").append("\n")
+                  .append("PR : ").append(spo2.getPr()).append("\n");
+            if(spo2.getMeasurementContinuous() == null){
+                sbText.append("Timestamp : ").append(spo2.getTimestamp()).append("\n");
+            }else{
+                sbText.append("Spo2-Fast : ").append(spo2.getMeasurementContinuous().getSpo2Fast()).append("\n")
+                      .append("PR-Fast : ").append(spo2.getMeasurementContinuous().getPrFast()).append("\n")
+                      .append("Spo2-Slow : ").append(spo2.getMeasurementContinuous().getSpo2Slow()).append("\n")
+                      .append("PR-Slow : ").append(spo2.getMeasurementContinuous().getPrSlow()).append("\n");
+            }
+        } else{
             sbText.append(data);
         }
 
         if(isExpand){
-            tvCharValue.setText(tvCharValue.getText().toString() + "\n" + sbText.toString());
-        }else{
+            tvCharValue.setText(tvCharValue.getText().toString() + sbText.toString());
+        } else{
             tvCharValue.setText(sbText.toString());
         }
     }

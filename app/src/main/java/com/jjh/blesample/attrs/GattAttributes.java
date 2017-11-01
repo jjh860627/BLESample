@@ -54,6 +54,8 @@ public class GattAttributes {
     }
 
     public static enum Characteristic{
+        /* Common */
+        RECORD_ACCESS_CONTROL_POINT(0x2A52, "Record Access Control Point(Write,Indicate)"),
         /* Generic Access Service*/
         DEVICE_NAME(0x2A00, "Device Name(Read)"),
         APPEARANCE(0x2A01, "Appearance(Read)"),
@@ -75,11 +77,13 @@ public class GattAttributes {
         GLUCOSE_MEASUREMENT(0x2A18, "Glucose Measurement(Notify)"),
         GLUCOSE_MEASUREMENT_CONTEXT(0x2A34, "Glucose Measurement Context(Notify)"),
         GLUCOSE_FEATURE(0x2A51, "Glucose Feature(Read)"),
-        GLUCOSE_RECORD_ACCESS_CONTROL_POINT(0x2A52, "Record Access Control Point(Write,Indicate)"),
         /* Weight Scale */
         WEIGHT_SCALE_FEATURE(0x2A9E, "Weight Scale Feature(Read)"),
-        WEIGHT_MEASUREMENT(0x2A9D, "Weight Measurement(Indicate)");
-
+        WEIGHT_MEASUREMENT(0x2A9D, "Weight Measurement(Indicate)"),
+        /* Pulse Oximeter Service */
+        PLX_SPOT_CHECK_MEASUREMENT(0x2A5E, "PLX Spot-Check Measurement(Indicate)"),
+        PLX_CONTINUOUS_MEASUREMENT(0x2A5F, "PLX Continuous Measurement(Notify)"),
+        PLX_FEATURES(0x2A60, "PLX Features(Read)");
         public final int uuid;
         public final String name;
         private Characteristic(int uuid, String name){
