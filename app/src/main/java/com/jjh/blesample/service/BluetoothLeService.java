@@ -120,16 +120,16 @@ public class BluetoothLeService extends Service {
         sendBroadcast(intent);
     }
 
-    private void broadcastUpdate(final String action, final BluetoothGattCharacteristic characteristic) {
+    private void broadcastUpdate(final String action, final BluetoothGattCharacteristic  characteristic) {
 
         final Intent intent = new Intent(action);
-        Log.i("Value", Arrays.toString(characteristic.getValue()));
+        Log.i("Value", GattAttributes.getCharacteristicName(characteristic.getUuid()) + "(" + characteristic.getUuid().toString() + ") = " + Arrays.toString(characteristic.getValue()));
         byte[] value = characteristic.getValue();
         if (value != null && value.length > 0) {
             final StringBuilder stringBuilder = new StringBuilder(value.length);
             for (byte byteChar : value)
                 stringBuilder.append(String.format("%02X ", byteChar));
-            Log.i("Value_HEX", stringBuilder.toString());
+            Log.i("Value_HEX", GattAttributes.getCharacteristicName(characteristic.getUuid()) + "(" + characteristic.getUuid().toString() + ") = " + stringBuilder.toString());
         }
 
         if (GattAttributes.Characteristic.HEART_RATE_MEASUREMENT.isMatchedWithUUID(characteristic.getUuid())) {
@@ -160,7 +160,7 @@ public class BluetoothLeService extends Service {
             //Health Thermometer - Temperature Measurement
             Temperature temperature = mGattDataParser.parseTemperatureData(characteristic);
             intent.putExtra(EXTRA_DATA, temperature);
-            setCharacteristicIndication(characteristic, false);
+            //setCharacteristicIndication(characteristic, false);
 
         } else if(GattAttributes.Characteristic.TEMPERATURE_TYPE.isMatchedWithUUID(characteristic.getUuid())){
             //Health Thermometer - Temperature Type
@@ -542,6 +542,7 @@ public class BluetoothLeService extends Service {
         byte requestOpCode = data[3];
         byte responseCodeValue = data[2];
         if(opCode == RACPAttributes.OpCode.NUMBER_OF_STORED_RECORDS_RESPONSE.code){
+            Log.i("readRACP", "Stored Records Count = " + responseCodeValue);
             mReadCount = 0;
             if(responseCodeValue > 0){
                 writeRACP(characteristic, RACPAttributes.OpCode.REPORT_STORED_RECORDS, RACPAttributes.Operator.ALL_RECORDS);

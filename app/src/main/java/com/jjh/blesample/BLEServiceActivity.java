@@ -98,7 +98,9 @@ public class BLEServiceActivity extends AppCompatActivity {
             if(mCharacteristicList != null){
                 final BluetoothGattCharacteristic characteristic = mCharacteristicList.get(groupPosition).get(childPosition);
                 final int charProp = characteristic.getProperties();
+                String logPropertyType = "";
                 if((charProp & BluetoothGattCharacteristic.PROPERTY_READ) != 0){
+                    logPropertyType = "READ";
                     if(mNotifyCharacteristic != null){
                         mBluetoothLeService.setCharacteristicNotification(mNotifyCharacteristic, false);
                         mNotifyCharacteristic = null;
@@ -111,13 +113,16 @@ public class BLEServiceActivity extends AppCompatActivity {
                     mBluetoothLeService.readCharacteristic(characteristic);
                 }
                 if((charProp & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0){
+                    logPropertyType = "NOTIFY";
                     mNotifyCharacteristic = characteristic;
                     mBluetoothLeService.setCharacteristicNotification(characteristic, true);
                 }
                 if((charProp & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0){
+                    logPropertyType = "INDICATE";
                     mNotifyCharacteristic = characteristic;
                     mBluetoothLeService.setCharacteristicIndication(characteristic, true);
                 }
+                Log.i("OnCharacteristicClick", GattAttributes.getCharacteristicName(characteristic.getUuid()) + "(" + characteristic.getUuid().toString() + ") = [" + logPropertyType + "]");
                 return true;
             }
             return false;
